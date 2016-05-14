@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -91,5 +92,23 @@ func CallCmd(ch chan TimeStatus) {
 func ChannelDrain(ch chan TimeStatus) {
 	for b := range ch {
 		log.Printf("request done: %v\n", b.Duration())
+
+		url := "http://192.168.122.1:44005/status"
+		rawjsonstr := fmt.Sprintf("{\"status\":\"%v\"}", "ok")
+		jsonstr := []byte(rawjsonstr)
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonstr))
+		if err != nil {
+			log.Panicf("Error Creating Request: %v\n", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Panicf("Error requesting: %v\n", err)
+		}
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("status: %v\nResponse Header: %v\nResponse Body: %v\n", resp.Status, resp.Header, string(body))
 	}
 }
