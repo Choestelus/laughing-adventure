@@ -78,6 +78,8 @@ func CallCmd(ch chan TimeStatus) {
 
 	err = cmd.Wait()
 	if err != nil {
+		fmt.Printf("stdout:\n%v\n", OutBuf.String())
+		fmt.Printf("stderr:\n%v\n", ErrBuf.String())
 		log.Panicf("Error waiting %v: %v\n", os.Args[1], err)
 	}
 
@@ -91,10 +93,11 @@ func CallCmd(ch chan TimeStatus) {
 
 func ChannelDrain(ch chan TimeStatus) {
 	for b := range ch {
+		var body []byte
 		log.Printf("request done: %v\n", b.Duration())
 
 		url := "http://192.168.122.1:44005/status"
-		rawjsonstr := fmt.Sprintf("{\"status\":\"%v\"}", "ok")
+		rawjsonstr := fmt.Sprintf("{\"status\":\"%v\", \"From\":\"%v\"}", "ok", "SSD")
 		jsonstr := []byte(rawjsonstr)
 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonstr))
 		if err != nil {
@@ -105,10 +108,18 @@ func ChannelDrain(ch chan TimeStatus) {
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Panicf("Error requesting: %v\n", err)
+			log.Printf("Error requesting: %v\n", err)
+			goto EndFunc
 		}
-		defer resp.Body.Close()
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ = ioutil.ReadAll(resp.Body)
 		log.Printf("status: %v\nResponse Header: %v\nResponse Body: %v\n", resp.Status, resp.Header, string(body))
+		//Nasty bastard defer nil panic sh*t
+		defer resp.Body.Close()
+	EndFunc:
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered in ChannelDrain %v\n", r)
+			}
+		}()
 	}
 }
