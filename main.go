@@ -77,7 +77,7 @@ func CallCmd(ch chan TimeStatus) {
 	}
 
 	err = cmd.Wait()
-	if err != nil {
+	if err != nil && err.Error() != "exit status 1" {
 		fmt.Printf("stdout:\n%v\n", OutBuf.String())
 		fmt.Printf("stderr:\n%v\n", ErrBuf.String())
 		log.Panicf("Error waiting %v: %v\n", os.Args[1], err)
